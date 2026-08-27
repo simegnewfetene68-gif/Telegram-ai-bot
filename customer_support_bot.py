@@ -1,53 +1,113 @@
+import logging
 import os
+from threading import Thread
 from dotenv import load_dotenv
+from flask import Flask
+import google.generativeai as genai
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-from google import genai
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
+# ---------------------------------------------------------
+# 1. FLASK WEB SERVER (ለ Render Free Web Service)
+# ---------------------------------------------------------
+app = Flask('')
+
+
+@app.route('/')
+def home():
+  return 'Bot is alive and running!'
+
+
+def run():
+  # Render አውቶማቲክ የሚሰጠውን PORT ይጠቀማል
+  port = int(os.environ.get('PORT', 8080))
+  app.run(host='0.0.0.0', port=port)
+
+
+def keep_alive():
+  t = Thread(target=run)
+  t.start()
+
+
+# ---------------------------------------------------------
+# 2. CONFIGURATION & SETUP
+# ---------------------------------------------------------
 load_dotenv()
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+)
 
-ai_client = genai.Client(api_key=GEMINI_API_KEY)
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
-# የንግድ ድርጅቱ መረጃ (System Prompt) - የራስህን አገልግሎቶች እና ዋጋ እዚህ መቀየር ትችላለህ
-BUSINESS_CONTEXT = """
-እርስዎ የ'Tech & Cyber Solutions' የደንበኞች አገልግሎት AI ረዳት ነዎት።
-የድርጅቱ ዋና ዋና አገልግሎቶች እና ዋጋዎች፦
-1. የዌብሳይት ደህንነት ፍተሻ (Vulnerability Audit) - 8,000 ብር
-2. የቴሌግራም AI ቦት ማበልፀግ (Bot Development) - 5,000 ብር
-3. የኔትወርክ ውቅረት እና ደህንነት (Network Setup) - 10,000 ብር
+if not TELEGRAM_BOT_TOKEN or not GEMINI_API_KEY:
+  raise ValueError(
+      'እባክዎን TELEGRAM_BOT_TOKEN እና GEMINI_API_KEY በ Environment Variables ውስጥ'
+      ' መኖራቸውን ያረጋግጡ!'
+  )
 
-ደንበኞች ስለ አገልግሎቶቹ፣ ዋጋዎች ወይም አሰራር ሲጠይቁ ሁልጊዜ በትህትና፣ በአጭሩ እና በማብራራት በአማርኛ ይመልሱ።
-ስለ ድርጅቱ ያልሆነ ጥያቄ ሲጠየቁ 'እኔ የTech & Cyber Solutions ረዳት ስለሆንኩ ከዚሁ ጋር በተያያዘ ልረዳዎ እችላለሁ' ብለው ይመልሱ።
-"""
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-3.6-flash')
+
+# ---------------------------------------------------------
+# 3. TELEGRAM BOT HANDLERS
+# ---------------------------------------------------------
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_text = (
-        "ሰላም! እንኳን ወደ Tech & Cyber Solutions የደንበኞች አገልግሎት በደህና መጡ።\n\n"
-        "ስለ አገልግሎቶቻችን፣ ዋጋዎች ወይም የቴክኖሎጂ ጥያቄዎች ካሉዎት መጠየቅ ይችላሉ!"
-    )
-    await update.message.reply_text(welcome_text)
+  welcome_text = (
+      'ሰላም! እንኳን ወደ ደንበኞች አገልግሎት ቦት በሰላም መጡ።\n'
+      'ምን እንድረዳዎ ይፈልጋሉ? ጥያቄዎን ማስገባት ይችላሉ።'
+  )
+  await update.message.reply_text(welcome_text)
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text
-    print(f"የመጣ ጥያቄ: {user_text}")
+  user_text = update.message.text
+  await update.message.chat.send_action(action='typing')
 
-    prompt = f"{BUSINESS_CONTEXT}\n\nየደንበኛ ጥያቄ: {user_text}"
-
-    response = ai_client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=prompt
+  try:
+    # ለደንበኞች አገልግሎት የሚሆን Prompt አዘጋጅተን ለ Gemini እንልካለን
+    system_prompt = (
+        'You are a helpful, friendly, and professional customer support assistant.'
+        ' Answer the customer query concisely and clearly in Amharic unless asked'
+        f' otherwise:\n{user_text}'
     )
 
+    response = model.generate_content(system_prompt)
     await update.message.reply_text(response.text)
+  except Exception as e:
+    logging.error(f'Error generating AI response: {e}')
+    await update.message.reply_text(
+        'ይቅርታ፣ ጥያቄዎን በማቀናበር ላይ ሳለን ስህተት አጋጥሟል። እባክዎን ጥቂት ቆይተው እንደገና ይሞክሩ።'
+    )
 
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+# ---------------------------------------------------------
+# 4. MAIN EXECUTION
+# ---------------------------------------------------------
+def main():
+  # Flask ሰርቨሩን ከጀርባ ያስነሳል (Render እንዳይዘጋው)
+  keep_alive()
 
-    print("Customer Support Bot እየሰራ ነው...")
-    app.run_polling()
+  # Telegram Bot ያስነሳል
+  application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+
+  application.add_handler(CommandHandler('start', start))
+  application.add_handler(
+      MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
+  )
+
+  application.run_polling()
+
+
+if __name__ == '__main__':
+  main()
