@@ -1,5 +1,7 @@
 import logging
 import os
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from content_creator_bot import fetch_and_post
 from threading import Thread
 from dotenv import load_dotenv
 from flask import Flask
@@ -94,20 +96,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------
 # 4. MAIN EXECUTION
 # ---------------------------------------------------------
-def main():
-  # Flask ሰርቨሩን ከጀርባ ያስነሳል (Render እንዳይዘጋው)
-  keep_alive()
+async def main():
+    # Flask ሰርቨሩን ማስነሳት (ለ Render Health Check)
+    keep_alive()
 
-  # Telegram Bot ያስነሳል
-  application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    # የ Scheduler (የሰዓት ቆጣሪ) ማቀናበሪያ
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(fetch_and_post, 'interval', hours=2)
+    scheduler.start()
 
-  application.add_handler(CommandHandler('start', start))
-  application.add_handler(
-      MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
-  )
+    # Telegram Bot ማዘጋጀት
+    application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-  application.run_polling()
-
+    # ቦቱን ማስነሳት (ለ Support Bot እና ለ Scheduler አብሮ ይሰራል)
+    async with application:
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling()
+        print("ሁለቱም ቦቶች በ Render ላይ 24/7 ስራ ጀምረዋል...")
+        await asyncio.Event().wait()
 
 if __name__ == '__main__':
-  main()
+    import asyncio
+    asyncio.run(main())
