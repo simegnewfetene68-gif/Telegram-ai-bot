@@ -1,1 +1,1 @@
-worker: python customer_support_bot.py
+web: python customer_support_bot.py
