@@ -50,8 +50,7 @@ async def fetch_and_post():
 
         await bot.send_message(
             chat_id=CHANNEL_ID,
-            text=post_content,
-            parse_mode="Markdown"
+            text=post_content
         )
         print("ፖስቱ ወደ ቻናሉ በትክክል ተልኳል!")
     except Exception as e:
