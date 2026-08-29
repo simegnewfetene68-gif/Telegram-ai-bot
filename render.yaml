@@ -1,6 +1,0 @@
-services:
-  - type: worker
-    name: Telegram-ai-bot2
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python content_creator_bot.py
