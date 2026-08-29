@@ -1,4 +1,4 @@
 python-telegram-bot
 google-generativeai
+feedparser
 python-dotenv
-flask
