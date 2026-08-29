@@ -72,3 +72,21 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+async def main():
+    scheduler = AsyncIOScheduler()
+    # በየ 2 ሰዓቱ fetch_and_post እንዲሰራ ማዘዝ
+    scheduler.add_job(fetch_and_post, 'interval', hours=2)
+    scheduler.start()
+    
+    # ቦቱ Render ላይ ሲጀምር የመጀመሪያውን ዜና ወዲያው እንዲልክ
+    await fetch_and_post()
+    
+    print("🚀 ቦቱ Render.com ላይ በየ 2 ሰዓቱ መስራት ጀምሯል...")
+    
+    # 24/7 እንዳይቆም የሚያስችል ማለቂያ የሌለው loop
+    while True:
+        await asyncio.sleep(3600)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
