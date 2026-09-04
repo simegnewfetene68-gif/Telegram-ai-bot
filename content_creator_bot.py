@@ -66,10 +66,11 @@ async def fetch_and_post():
             text=post_content
         )
         print("✅ ዜናው በቴሌግራም ላይ በጥሩ ሁኔታ ተለቋል!")
+        post_to_facebook_and_instagram(post_content)
+
 
     except Exception as e:
         print(f"⚠️ ስህተት ተፈጠረ፦ {e}")
-post_to_facebook_and_instagram(news_text)
 
 async def main():
     print("🚀 የቴሌግራም ቦት በ Render.com ላይ ስራ ጀምሯል...")
