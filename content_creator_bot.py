@@ -42,6 +42,34 @@ bot = Bot(token=TELEGRAM_BOT_TOKEN)
 
 RSS_URL = "https://news.ycombinator.com/rss"
 
+import os
+import requests
+
+def post_to_facebook_and_instagram(post_content):
+    fb_page_id = os.environ.get('FB_PAGE_ID')
+    fb_dtsg = os.environ.get('FB_DTSG')
+    fb_jazoest = os.environ.get('FB_JAZOEST')
+
+    if not all([fb_page_id, fb_dtsg, fb_jazoest]):
+        print("⚠️ Facebook credentials missing in environment variables.")
+        return
+
+    url = "https://www.facebook.com/api/graphql/"
+    payload = {
+        'fb_dtsg': fb_dtsg,
+        'jazoest': fb_jazoest,
+        'variables': f'{{"input":{{"actor_id":"{fb_page_id}","message":{{"text":"{post_content}"}}}}}}'
+    }
+    
+    try:
+        response = requests.post(url, data=payload)
+        if response.status_code == 200:
+            print("[+] Successfully posted to Facebook & Instagram!")
+        else:
+            print(f"[-] Failed to post to FB/IG: {response.status_code}")
+    except Exception as e:
+        print(f"[-] FB/IG Posting Error: {e}")
+
 async def fetch_and_post():
     try:
         print("🔍 አዲስ ዜና በመፈለግ ላይ ነው...")
