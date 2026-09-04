@@ -73,14 +73,21 @@ async def fetch_and_post():
         print(f"⚠️ ስህተት ተፈጠረ፦ {e}")
 
 async def main():
-    print("🚀 የቴሌግራም ቦት በ Render.com ላይ ስራ ጀምሯል...")
+    keep_alive()  # Render Health Check
+    
+    print("🚀 ቦቱ በ Render.com ላይ ስራ ጀምሯል...")
+    
     while True:
-        await fetch_and_post()
-        print("⏰ የሚቀጥለው ዜና ከ2 ሰዓት በኋላ ይለካል...")
-        # በየ 2 ሰዓቱ (7200 ሰከንድ) እንዲልክ ማድረግ
+        try:
+            print("🔄 አዲስ ዜና በመፈለግ ላይ...")
+            await fetch_and_post()
+        except Exception as e:
+            print(f"⚠️ Error inside main loop: {e}")
+            
+        # ለ 2 ሰዓት (7200 ሰከንድ) ይጠብቃል
         await asyncio.sleep(7200)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())
 import os
 import requests
