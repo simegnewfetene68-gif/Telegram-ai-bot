@@ -2,14 +2,17 @@ import os
 from threading import Thread
 from flask import Flask
 
+# 1. FLASK WEB SERVER (Cronjob ሲጠራው ዜናውን የሚያስነሳ)
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is active!"
+    # cron-job.org በጠራ ቁጥር ዜናውን እንዲፈልግና እንዲፖስት ያደርጋል
+    asyncio.run(fetch_and_post())
+    return 'Bot is alive and news updated!'
 
 def run():
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
